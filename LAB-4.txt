@@ -1,0 +1,152 @@
+#include <windows.h>
+#include <cstdio>
+#include <GL/gl.h>
+#include <GL/glut.h>
+#include <cmath>
+
+GLfloat posX      = 0.0f;
+GLfloat posY      = 0.0f;
+GLfloat speed     = 0.01f;
+bool    moving    = true;
+bool    showTex   = true;
+
+GLuint textureID;
+const int TEX_WIDTH = 64, TEX_HEIGHT = 64;
+unsigned char texData[TEX_HEIGHT][TEX_WIDTH ][3];
+
+void generateTexture() {
+    for (int i = 0; i < TEX_HEIGHT; i++) {
+        for (int j = 0; j < TEX_WIDTH ; j++) {
+            int checker = ((i / 8) % 2 == 0) ^ ((j / 8) % 2 == 0);
+            texData[i][j][0] = checker ? 80  : 200;
+            texData[i][j][1] = checker ? 120 : 220;
+            texData[i][j][2] = checker ? 200 : 255;
+        }
+    }
+}
+
+void setupTexture() {
+    generateTexture();
+    glEnable(GL_TEXTURE_2D);
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TEX_WIDTH , TEX_HEIGHT, 0,GL_RGB, GL_UNSIGNED_BYTE, texData);
+}
+
+void drawLetterA() {
+    if (showTex) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+    } else {
+        glDisable(GL_TEXTURE_2D);
+    }
+
+    glBegin(GL_QUADS);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glTexCoord2f(0.0f, 0.0f); glVertex2f(-0.30f, -0.40f);
+        glTexCoord2f(0.5f, 0.0f); glVertex2f(-0.10f, -0.40f);
+        glTexCoord2f(0.3f, 1.0f); glVertex2f( 0.00f,  0.40f);
+        glTexCoord2f(0.0f, 1.0f); glVertex2f(-0.15f,  0.40f);
+    glEnd();
+
+    glBegin(GL_QUADS);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glTexCoord2f(0.5f, 0.0f); glVertex2f( 0.10f, -0.40f);
+        glTexCoord2f(1.0f, 0.0f); glVertex2f( 0.30f, -0.40f);
+        glTexCoord2f(1.0f, 1.0f); glVertex2f( 0.15f,  0.40f);
+        glTexCoord2f(0.7f, 1.0f); glVertex2f( 0.00f,  0.40f);
+    glEnd();
+
+    glBegin(GL_QUADS);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glTexCoord2f(0.0f, 0.4f); glVertex2f(-0.15f, -0.05f);
+        glTexCoord2f(1.0f, 0.4f); glVertex2f( 0.15f, -0.05f);
+        glTexCoord2f(1.0f, 0.6f); glVertex2f( 0.15f,  0.05f);
+        glTexCoord2f(0.0f, 0.6f); glVertex2f(-0.15f,  0.05f);
+    glEnd();
+
+
+}
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glTranslatef(posX, posY, 0.0f);
+    drawLetterA();
+    glutSwapBuffers();
+}
+
+void update(int value) {
+    if (moving) {
+        posX -= speed;
+        if (posX < -1.5f) posX = 1.2f;
+
+    }
+
+    glutPostRedisplay();
+    glutTimerFunc(16, update, 0);
+}
+
+//   W/S/A/D  = move up/down/left/right
+//   Space    = pause / resume
+//   T        = toggle texture on/off
+//   +/-      = speed up / slow down
+void handleKeypress(unsigned char key, int x, int y) {
+    switch (key) {
+        case 'w': posY += 0.05f;
+            break;
+        case 's': posY -= 0.05f;
+            break;
+        case 'a': posX -= 0.05f;
+            break;
+        case 'd': posX += 0.05f;
+            break;
+        case 'p': moving = !moving;
+            break;
+        case 't':  showTex = !showTex;
+            break;
+        case '+': speed += 0.005f;
+            break;
+        case '-':  speed -= 0.005f;
+            if (speed < 0.0f) speed = 0.0f;
+            break;
+        case 27: exit(0); break;
+    }
+    glutPostRedisplay();
+}
+
+
+// Left click  = speed up
+// Right click = slow down
+void handleMouse(int button, int state, int x, int y) {
+    if (state == GLUT_DOWN) {
+        if (button == GLUT_LEFT_BUTTON)  speed += 0.01f;
+        if (button == GLUT_RIGHT_BUTTON) { speed -= 0.01f; if (speed < 0) speed = 0; }
+    }
+    glutPostRedisplay();
+}
+
+void init() {
+    glClearColor(0.05f, 0.05f, 0.10f, 1.0f);
+    setupTexture();
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(640, 480);
+    glutInitWindowPosition(50, 50);
+    glutCreateWindow("Texture + Interaction - Letter A");
+
+    init();
+    glutDisplayFunc(display);
+    glutTimerFunc(16, update, 0);
+    glutKeyboardFunc(handleKeypress);
+    glutMouseFunc(handleMouse);
+    glutMainLoop();
+    return 0;
+}

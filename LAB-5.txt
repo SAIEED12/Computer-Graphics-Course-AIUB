@@ -1,0 +1,107 @@
+#include <windows.h>
+#include <GL/gl.h>
+#include <GL/glut.h>
+
+// Control points
+float ctrlX[4] = { -0.6f, -0.2f, 0.2f, 0.6f };
+float ctrlY[4] = { -0.4f,  0.6f, -0.6f, 0.4f };
+
+float position = 0.0f;
+float speed    = 0.005f;
+
+void getBezierPoint(float t, float& x, float& y) {
+    float omt = 1.0f - t;
+    x = omt*omt*omt*ctrlX[0] + 3*t*omt*omt*ctrlX[1]
+      + 3*t*t*omt*ctrlX[2]   + t*t*t*ctrlX[3];
+    y = omt*omt*omt*ctrlY[0] + 3*t*omt*omt*ctrlY[1]
+      + 3*t*t*omt*ctrlY[2]   + t*t*t*ctrlY[3];
+}
+
+void display() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glLoadIdentity();
+
+    // Draw Bezier curve
+    glColor3f(0.0f, 1.0f, 1.0f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_STRIP);
+        for (int i = 0; i <= 100; i++) {
+            float t = (float)i / 100.0f;
+            float x, y;
+            getBezierPoint(t, x, y);
+            glVertex2f(x, y);
+        }
+    glEnd();
+
+    // Draw control points
+    glPointSize(8.0f);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glBegin(GL_POINTS);
+        for (int i = 0; i < 4; i++)
+            glVertex2f(ctrlX[i], ctrlY[i]);
+    glEnd();
+
+    // Draw moving dot along curve
+    float dotX, dotY;
+    getBezierPoint(position, dotX, dotY);
+    glPointSize(12.0f);
+    glColor3f(1.0f, 1.0f, 0.0f);
+    glBegin(GL_POINTS);
+        glVertex2f(dotX, dotY);
+    glEnd();
+
+    glutSwapBuffers();
+}
+
+void update(int value) {
+    position += speed;
+    if (position > 1.0f) position = 0.0f;
+    glutPostRedisplay();
+    glutTimerFunc(16, update, 0);
+}
+
+void handleMouse(int button, int state, int x, int y) {
+    if (state == GLUT_DOWN) {
+        if (button == GLUT_LEFT_BUTTON)  speed += 0.005f;
+        if (button == GLUT_RIGHT_BUTTON) { speed -= 0.005f; if (speed < 0) speed = 0; }
+    }
+    glutPostRedisplay();
+}
+
+void handleKeypress(unsigned char key, int x, int y) {
+    switch (key) {
+        case 'a': speed = 0.0f;   break;  // stop
+        case 'w': speed = 0.005f; break;  // resume
+        case 27:  exit(0);        break;  // ESC quit
+    }
+    glutPostRedisplay();
+}
+
+void reshape(GLsizei width, GLsizei height) {
+    if (height == 0) height = 1;
+    GLfloat aspect = (GLfloat)width / (GLfloat)height;
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    if (width >= height)
+        gluOrtho2D(-1.0 * aspect, 1.0 * aspect, -1.0, 1.0);
+    else
+        gluOrtho2D(-1.0, 1.0, -1.0 / aspect, 1.0 / aspect);
+    glMatrixMode(GL_MODELVIEW);
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(640, 480);
+    glutInitWindowPosition(50, 50);
+    glutCreateWindow("Bezier Curve Animation");
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutTimerFunc(16, update, 0);
+    glutKeyboardFunc(handleKeypress);
+    glutMouseFunc(handleMouse);
+    glutMainLoop();
+    return 0;
+}
